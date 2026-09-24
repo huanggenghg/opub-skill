@@ -1,0 +1,207 @@
+---
+name: opub-cli
+description: Use when 用户要用 opub 发布/上传视频或图文、配置多平台发布、发布到抖音/小红书/快手/微博/B站/视频号/百家号，或排查 opub、账号登录校验、浏览器驱动环境问题
+version: "0.9.0"
+---
+
+# opub CLI 使用指南
+
+## 这是什么
+
+`opub` 是一个 pip 包，把视频/图文一键发布到 7 个国内平台。本文件是它对 Agent 的完整接口契约：安装、配置、调用、读取结果所需的信息全部在此或 `opub` 运行时输出中。
+
+## 安装
+
+安装前先检测当前解释器。仅支持 CPython 3.11、3.12、3.13，以及 macOS arm64/x86_64、Windows x86_64、Linux x86_64；Skill 本身不提供或管理 Python。环境不匹配时向用户报告 `ENV-001` 和支持范围，不尝试从源码构建：
+
+```bash
+python -c "import platform,sys; assert platform.python_implementation() == 'CPython' and (3,11) <= sys.version_info[:2] <= (3,13); print(platform.system(), platform.machine())"
+python -m pip install --only-binary=:all: "opub==0.9.0"
+opub --repair-env
+```
+
+升级：`python -m pip install -U --only-binary=:all: opub`，升级后用 `opub --version` 确认版本。若 pip 报告没有匹配的发行版，不得移除 `--only-binary` 或改装源码包；应报告当前系统、CPU、Python 版本及上述支持范围。
+
+系统依赖：
+
+```bash
+# 浏览器驱动（--repair-env 会安装，也可单独执行以下命令）
+PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="https://cdn.playwright.dev" patchright install chromium
+
+# ffmpeg（仅"图文转视频"功能需要）
+# macOS: brew install ffmpeg
+# Ubuntu/Debian: sudo apt-get install ffmpeg
+```
+
+首次运行会自动在当前系统用户的 `~/.opub/` 创建数据目录（cookies、许可证和发布记录等），无需手动初始化。同一系统用户下的所有 Agent 固定使用这一目录；不要设置 `SAU_HOME`，也不要复制登录快照到工作区。
+
+发布预检只检查环境，不安装或更新依赖。需要修复时运行 `opub --repair-env`；图文转视频使用 `opub --repair-env --with-video` 安装可选依赖，也可安装 `pip install "opub[video]"`。修复命令使用 opub 当前解释器，不需要许可，也不会发布内容；不能和发布参数或激活命令混用。修复可能包含多个安装步骤，每步最多 600 秒，调用时应允许总计至少 1800 秒。
+
+发布到 B站需要本地 biliup 程序：发布与 `--dry-run` 只做只读检查，缺失返回 `ENV-007`；用 `opub --repair-env --with-bilibili` 显式安装，普通修复不安装。B站子进程限时：查询 60 秒、扫码登录 360 秒、上传 3600 秒；上传超时结果未确认且不可自动重试，应引导用户到平台人工核对。
+
+## 已验证平台（7个）
+
+| 平台标识 | 名称 | 视频 | 图文 | 说明 |
+| --- | --- | --- | --- | --- |
+| `douyin` | 抖音 | ✅ | ✅ | |
+| `xiaohongshu` | 小红书 | ✅ | ✅ | 浏览器自动化 |
+| `kuaishou` | 快手 | ✅ | ✅ | 浏览器自动化 |
+| `bilibili` | B站 | ✅ | ❌ | 需先 `opub --repair-env --with-bilibili` 安装 biliup，自动抓取BV号 |
+| `tencent` | 视频号 | ✅ | ❌ | |
+| `baijiahao` | 百家号 | ✅ | ❌ | 浏览器自动化 |
+| `weibo` | 微博 | ✅ | ❌ | 单账号自动发现 |
+
+## 触发场景
+
+当用户表达下面任一意图时使用本 skill：
+
+- 发布视频、上传视频、一键发布、多平台发布、图文发布
+- 发布到抖音、小红书、快手、微博、B站、视频号、百家号
+- 配置发布平台、账号、cookie、登录校验、扫码登录
+- 排查 `opub`、Chromium 或浏览器驱动问题
+
+## 调用
+
+`opub` 的新任务通过命令行参数接收全部发布信息；恢复已有任务使用 `--resume RUN_ID`：
+
+```bash
+# 视频发布(必填:--platforms + --video)
+opub --platforms douyin,weibo --video videos/demo.mp4 --title "标题" --tags "标签1,标签2"
+
+# 图文发布
+opub --platforms xiaohongshu --note --images img1.jpg,img2.jpg --title "标题"
+
+# 图文转视频(视频号/百家号等不支持图文的平台)
+opub --platforms tencent --note --images img1.jpg --convert-to-video --video-duration 5
+
+# 定时 / 从目录第 2 个视频开始 / 强制重新生成
+opub --platforms weibo --video videos/ --title "标题" --schedule "2027-01-01 12:00" --start-from 2 --force
+
+# 有头模式排查(发布默认无头不弹窗;扫码登录始终显示窗口)
+opub --platforms douyin --video videos/demo.mp4 --title "标题" --no-headless
+
+opub --version                        # 查看已安装版本
+opub --help                           # 全部参数说明
+```
+
+参数说明:**素材路径(`--video`/`--images`)、标题、描述、话题标签(`--tags`)、目标平台是每次发布的输入,执行前必须逐项向用户确认,不要自行检索文件系统挑素材,也不要替用户编写标题/描述/话题**。仅当用户明确表示留空自动生成时,`--title`/`--desc` 才可留空走自动生成(需视频同名 JSON 或 ZHIPU_API_KEY),生成失败报 CFG-001,此时向用户报告错误并请用户提供 `--title` 重试,不要自行编一个标题;`--schedule` 指定后本次为定时发布。每个平台只自动发现一个规范账号文件；未发现账号时，发布流程会引导扫码并写入对应上传器目录的 `account.json`。**启用平台若无账号文件,发布时会自动弹出浏览器扫码登录**,登录完成后继续发布,不需要提前单独登录。浏览器平台每个素材在单页会话内完成登录与上传：发布默认无头,需要扫码时自动弹出独立的可见登录窗口,扫码后带新登录状态重启无头会话继续上传,结束后关闭；不同平台或账号分别管理会话。发布过程默认无头(不弹浏览器窗口),含发布前的登录状态检查;仅排查平台风控或元素定位问题时才加 `--no-headless` 回到有头模式,普通发布不要加。
+
+### 预检与恢复
+
+对已确认的发布输入添加 `--dry-run --output json` 可先验证输入与环境，无需许可；不会登录、发布、自动生成文案或转换图片。成功时从 `planned` 读取计划，不能将其描述为发布成功。实际发布前会先解析全部素材的标题；定时至少提前两小时，当前 B站不支持定时。
+
+实际发布后保存 `run_id`。用户要求继续失败或中断的任务时，使用 `opub --resume RUN_ID --output json`，不要重跑原始普通发布命令，也不要附加标题、平台、素材等新参数。恢复沿用已解析参数与账号文件路径；`reused: true` 是已有成功结果，不是本次新提交。尚未执行或明确未提交的项可继续；`RUN-004` 表示结果未确认，先核对平台作品，不自动重发。`RUN-003` 表示素材改变/缺失或记录无效，`RUN-005` 表示记录读写失败。只有用户确定需要新发布或变更参数时才创建新任务。保持原账号文件中的账号身份。
+
+`--start-from` 仅选择新任务的目录起始序号，不是平台级恢复；不要用它跳过部分平台的成功记录。发布记录在数据目录的 `publish-history.sqlite3`，不要删除或覆盖记录来绕过重复提交保护。
+
+## 付费许可
+
+`opub 0.x 创始版`售价 ¥9.90，在爱发电商品页购买：<https://afdian.com/item/69bf71f0a9f511f1bc065254001e7c00>。opub 自身不设账号。购买时无需提前注册爱发电；请使用你自己的手机号或邮箱完成验证，首次购买时爱发电会自动生成账号。付款后复制爱发电发放的激活码；请勿向 Agent 提供验证码或账号密码。激活码首次兑换后绑定一个设备。许可不迁移、不解绑、不提供换机重置，新电脑重新购买。许可覆盖 `0.x`，已安装的 `0.x` 版本可永久离线使用；未来大版本需要单独购买。支付方式由用户在爱发电页面选择。公开的 Python 包是诚实用户门禁，属于非强 DRM，不承诺阻止有能力的用户绕过。
+
+Agent 执行发布前必须静默运行 `opub --license-status`。保留已经确认的发布输入；若退出码为 13，运行 `opub --activate` 打开购买页。用户取得激活码后运行带 `--code` 的命令，不要再次询问支付方式。不得在用户可见消息、异常或 internal log 中展示完整激活码或设备 hash。激活成功后自动继续同一个发布任务，不重复问参数。
+
+Agent 只负责打开购买页和接收用户付款后提供的激活码，不得代填或索取手机号、邮箱验证码、爱发电账号或密码。
+
+许可状态和激活示例：
+
+```bash
+opub --license-status
+opub --activate
+opub --activate --code OPUB0-ABCDE-FGHJK-MNPQR-STVWX-YZ234-56789
+```
+
+许可错误统一输出 `[opub] LIC-xxx: <描述>。建议: <动作>`。常见错误及建议：
+
+| 错误码 | 含义 | 建议 |
+| --- | --- | --- |
+| `LIC-001` | 尚未激活 | 执行激活命令 |
+| `LIC-002` | 损坏签名 | 联系支持并提供错误码 |
+| `LIC-003` | 许可属于其他设备 | 新电脑重新购买 |
+| `LIC-004` | 稳定设备标识不可用 | 联系支持并提供错误码 |
+| `LIC-011` | 服务不可用 | 稍后重试 |
+| `LIC-013` | 激活码无效 | 检查激活码后重新激活 |
+| `LIC-014` | 激活码已绑定其他设备 | 当前电脑重新购买 |
+| `LIC-015` | 当前客户端版本不适用 | 升级或切换到 opub 0.x 后重试 |
+
+退出码 `13`（`exit 13`）表示需要首次付费激活；显示 `LIC-xxx` 时按表中建议处理。
+
+## Agent 用户反馈
+
+本技能只供 Agent 使用。Agent 执行发布时，用户可见反馈仅限以下三类：
+
+1. **发布环境状态**：正在检查、已就绪，或环境异常的简短结论。
+2. **发布开始**：发布已启动，可包含目标平台和素材数量。
+3. **发布结果**：各平台结果（成功或失败）、错误码、结果链接和总体计数。
+
+执行 `opub ...` 时，必须将 stdout 和 stderr 重定向到 Agent 内部临时日志，禁止向用户展示或转述原始命令输出。Agent 只可在内部读取日志以判断退出码并提取最终结果，不得把内部日志转化为过程消息。
+
+发布运行期间不发送发布进度，不转述依赖安装、登录过程、浏览器操作、调试信息或异常堆栈。浏览器登录交互由浏览器界面自行提示，Agent 不追加扫码或操作提醒。失败时只反馈稳定错误码、简短原因和最终建议。
+
+## 读取结果
+
+### 首选 JSON 格式
+
+Agent 发布时优先添加 `--output json`，将 stdout 保存为结果 JSON，将 stderr 单独保存为内部诊断日志。stdout 只有一份文档，字段为 `schema_version`（当前 1）、`mode`、`run_id`、`planned`、`exit_code`、`summary`、`results`、`errors`。文本输出仍可使用，下文格式保持兼容；`--help` 与 `--version` 始终为文本。
+
+`results` 每项含 `material`（视频路径或图文图片路径数组）、`content_type`、`platform`、`success`、`message`、`error_code`、`result_url`、`result_id`、`safe_to_retry`、`reused`、`action`。成功但 URL 为 null 仍是成功。仅当 `safe_to_retry` 明确为 true 才可自动重试，缺省 false。`errors` 每项含 `error_code`、`message`、`action`，用于配置、环境、许可及运行异常。
+
+`summary` 的 `success`/`failed` 只统计已记录的平台结果；判断整次任务必须同时查看 `exit_code` 和 `errors`。中途失败仍保留此前结果，中断返回 130 和 `RUN-002`，重试前先核实平台作品状态。
+
+### 退出码
+
+| 退出码 | 含义 | Agent 下一步 |
+| --- | --- | --- |
+| 0 | 执行成功 | 先看 mode：dry_run 仅汇报预检通过；publish/resume 从结果提取链接，并区分 reused |
+| 1 | 部分平台成功、部分失败 | 读"发布结果"汇总，向用户汇报成败明细 |
+| 2 | 全部平台发布失败 | 读各平台 [PUB-xxx] 错误码，按建议动作处理 |
+| 10 | 配置错误 | 按 stderr 的 CFG-xxx 建议修正命令行参数（CFG-001 标题为空时补 `--title`） |
+| 11 | 环境错误 | 按 stderr 的 ENV-xxx 建议执行安装命令后重试 |
+| 12 | 账号未登录且扫码未完成 | 在发布结果中反馈 AUTH-xxx，不追加扫码提示 |
+
+### 错误输出格式
+
+所有流程级错误输出到 stderr，格式固定：
+
+```
+[opub] <错误码>: <描述>。建议: <可执行的动作>
+```
+
+错误码体系：`CFG-xxx` 配置、`ENV-xxx` 环境、`AUTH-xxx` 登录、`PUB-<platform>` 平台发布失败（出现在"发布结果"汇总行中）、`RUN-xxx` 运行时异常（意外错误，退出码 2）。
+
+登录检查遇到 `NET-001`（网络失败或超时）、`PAGE-001`（页面无法识别）、`ENV-006`（本机环境或账号文件不可用）时，不得当作账号失效引导扫码或自动重试发布，按 `action` 处理。仅缺少账号或有明确登录失效证据才进入扫码流程。全部平台因这些检查失败时退出码为 2，部分成功时为 1。
+
+`ENV-007` 表示启用 B站但本地 biliup 程序缺失或不可执行：按 `action` 运行 `opub --repair-env --with-bilibili` 安装后重试。
+
+### 结果汇总格式
+
+发布结束打印稳定格式的汇总（stdout）：
+
+```
+========== 发布结果 ==========
+抖音: ✅ 成功 https://www.douyin.com/video/123
+B站: ✅ 成功
+微博: ❌ 失败 [PUB-weibo]: 上传超时
+
+========== 总体发布汇总 ==========
+成功: 2 次
+失败: 1 次
+```
+
+成功平台的结果链接显示在对应平台的汇总行中。Agent 从发布结果汇总中提取结果链接并反馈给用户，仅在汇总行存在 URL 时反馈链接。成功但没有 URL 表示发布成功但暂时无法抓取链接，不得视为发布失败；不创建或依赖 Excel 结果文件。
+
+## 环境排查（防御性说明）
+
+Agent 的运行沙箱可能自带**独立 Python 环境**（与项目 venv、系统 Python 均不同），且 `python`、`pip`、`opub` 三者在 PATH 中可能解析到**不同的解释器**——用 `python -c "import xxx"` 诊断得到的结果可能来自与 `opub` 实际运行不同的环境。排查或修复依赖时遵守：
+
+1. **统一用 `python -m pip ...` 而不是裸 `pip`**，确保 pip 操作的就是当前 `python` 的环境。
+2. **诊断与修复必须用同一个解释器**：修复前先运行 `python -c "import opub, sys; print(sys.executable)"` 确认该环境里 opub 可导入；若 `pip show` 说已安装而 `python -c "import ..."` 报 ModuleNotFoundError，说明两者不是同一环境，先定位 opub 实际所在的解释器再操作。
+3. **多平台同时报同一非登录类错误时，优先怀疑依赖损坏而不是引导用户扫码**。典型症状：发布时报 `ENV-006`，内部诊断为 `module 'greenlet' has no attribute 'greenlet'`——greenlet 安装不完整，残缺的包目录会被 Python 当作 namespace package（导入成功但属性缺失），而残留的 dist-info 元数据会让 pip 误判为已装好、重装 opub 也不会补上。
+4. **修复依赖损坏**：删除 site-packages 下残缺的包目录及其 `*.dist-info`（dist-info 内缺少 METADATA/RECORD 即为残骸），再 `python -m pip install --force-reinstall --no-deps <包名>` 重装，最后用 `opub --version` 验证。
+
+## Agent 注意事项
+
+- **发布输入必须来自用户**:视频/图片路径、标题、描述、话题标签在执行前逐项向用户确认,不要自行搜索目录选文件、不要替用户编造文案。仅当用户明确授权"留空自动生成"时,才可留空 `--title`/`--desc` 走自动生成。
+- **工具超时必须 >= 360 秒**:平台未登录时 opub 会打开浏览器阻塞等待扫码(最长约 5 分钟)。若工具默认超时(如 120 秒)先到期,进程被杀、浏览器一并关闭,登录半途而废且无任何日志。调用前设置足够长的超时,或引导用户先完成一次登录。
+- 不要先单独校验登录后再要求用户二次确认发布。
+- 发布运行期间不要额外展示二维码、转述登录过程或提示扫码；登录交互由弹出的浏览器界面负责。
+- 本项目文档中文优先，不维护国际化文案。
