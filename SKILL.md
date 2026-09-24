@@ -35,7 +35,7 @@ PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="https://cdn.playwright.dev" patchright instal
 
 首次运行会自动在当前系统用户的 `~/.opub/` 创建数据目录（cookies、许可证和发布记录等），无需手动初始化。同一系统用户下的所有 Agent 固定使用这一目录；不要设置 `SAU_HOME`，也不要复制登录快照到工作区。
 
-发布预检只检查环境，不安装或更新依赖。需要修复时运行 `opub --repair-env`；图文转视频使用 `opub --repair-env --with-video` 安装可选依赖，也可安装 `pip install "opub[video]"`。修复命令使用 opub 当前解释器，不需要许可，也不会发布内容；不能和发布参数或激活命令混用。修复可能包含多个安装步骤，每步最多 600 秒，调用时应允许总计至少 1800 秒。
+发布预检只检查环境，不安装或更新依赖。需要修复时运行 `opub --repair-env`；图文转视频使用 `opub --repair-env --with-video` 安装可选依赖，也可安装 `python -m pip install --only-binary=:all: "opub[video]"`。修复命令使用 opub 当前解释器，不需要许可，也不会发布内容；不能和发布参数或激活命令混用。修复可能包含多个安装步骤，每步最多 600 秒，调用时应允许总计至少 1800 秒。
 
 发布到 B站需要本地 biliup 程序：发布与 `--dry-run` 只做只读检查，缺失返回 `ENV-007`；用 `opub --repair-env --with-bilibili` 显式安装，普通修复不安装。B站子进程限时：查询 60 秒、扫码登录 360 秒、上传 3600 秒；上传超时结果未确认且不可自动重试，应引导用户到平台人工核对。
 
