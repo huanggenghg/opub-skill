@@ -6,10 +6,10 @@ opub 是面向 AI Agent 的多平台内容发布技能。用户用自然语言�
 
 ## 安装运行时
 
-opub 0.9.5 只提供经过编译的 Python wheel，不提供源码包：
+opub 0.9.6 只提供经过编译的 Python wheel，不提供源码包：
 
 ```bash
-python -m pip install --only-binary=:all: "opub==0.9.5"
+python -m pip install --only-binary=:all: "opub==0.9.6"
 opub --repair-env
 ```
 
@@ -20,7 +20,7 @@ opub --repair-env
 ## 发行边界
 
 - 本仓库公开发布 Skill、安装协议和用户文档。
-- opub 0.9.5 运行时通过 PyPI 分发编译 wheel，核心运行源码不在本仓库中。
+- opub 0.9.6 运行时通过 PyPI 分发编译 wheel，核心运行源码不在本仓库中。
 - `huanggenghg/opub` 保留 0.8.21 及更早版本的历史开源代码和 MIT 权利。
 - 编译会提高直接读取和修改运行时代码的成本，但不承诺阻止专业逆向。
 
@@ -28,4 +28,4 @@ opub --repair-env
 
 ## 许可证
 
-本仓库的 Skill 和文档采用 [MIT License](LICENSE)。该许可证不适用于 PyPI 中的 opub 0.9.5 私有运行时。
+本仓库的 Skill 和文档采用 [MIT License](LICENSE)。该许可证不适用于 PyPI 中的 opub 0.9.6 私有运行时。
