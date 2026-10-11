@@ -1,7 +1,7 @@
 ---
 name: opub-cli
 description: Use when 用户要用 opub 发布/上传视频或图文、配置多平台发布、发布到抖音/小红书/快手/微博/B站/视频号/百家号，或排查 opub、账号登录校验、浏览器驱动环境问题
-version: "0.9.9"
+version: "0.9.10"
 ---
 
 # opub CLI 使用指南
@@ -16,7 +16,7 @@ version: "0.9.9"
 
 ```bash
 python -c "import platform,sys; assert platform.python_implementation() == 'CPython' and (3,11) <= sys.version_info[:2] <= (3,13); print(platform.system(), platform.machine())"
-python -m pip install --only-binary=:all: "opub==0.9.9"
+python -m pip install --only-binary=:all: "opub==0.9.10"
 opub --repair-env
 ```
 
@@ -92,7 +92,7 @@ opub --help                           # 全部参数说明
 
 对已确认的发布输入添加 `--dry-run --output json` 可先验证输入与环境，无需许可；不会登录、发布、自动生成文案或转换图片。成功时从 `planned` 读取计划，不能将其描述为发布成功。实际发布前会先解析全部素材的标题；定时至少提前两小时，当前 B站不支持定时。
 
-实际发布后保存 `run_id`。用户要求继续失败或中断的任务时，使用 `opub --resume RUN_ID --output json`，不要重跑原始普通发布命令，也不要附加标题、平台、素材等新参数。恢复沿用已解析参数与账号文件路径；`reused: true` 是已有成功结果，不是本次新提交。尚未执行或明确未提交的项可继续；`RUN-004` 表示结果未确认，先核对平台作品，不自动重发。`RUN-003` 表示素材改变/缺失或记录无效，`RUN-005` 表示记录读写失败。只有用户确定需要新发布或变更参数时才创建新任务。保持原账号文件中的账号身份。
+实际发布后保存 `run_id`。用户要求继续失败或中断的任务时，使用 `opub --resume RUN_ID --output json`，不要重跑原始普通发布命令，也不要附加标题、平台、素材等新参数。恢复沿用已解析参数与账号文件路径；`reused: true` 是已有成功结果，不是本次新提交。尚未执行或明确未提交的项有原账号身份记录时可继续。上传前核验当前实际账号：同账号正常刷新可以恢复，换号或身份无法核验返回 `AUTH-003`，本次未上传，恢复原账号后再次 resume，不自动重新扫码。旧记录或未绑定原身份返回 `RUN-006`，不登录、不提交、不回填当前账号，也不自动创建新任务绕过；TikTok 当前缺少可核验的稳定身份来源，未绑定条目不能恢复。`RUN-004` 仍表示结果未确认，先核对平台作品，不自动重发；成功旧记录仍复用。`RUN-003` 表示素材改变/缺失或记录无效，`RUN-005` 表示记录读写失败。只有用户确定需要新发布或变更参数时才创建新任务。
 
 `--start-from` 仅选择新任务的目录起始序号，不是平台级恢复；不要用它跳过部分平台的成功记录。发布记录在数据目录的 `publish-history.sqlite3`，不要删除或覆盖记录来绕过重复提交保护。
 
