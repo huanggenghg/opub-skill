@@ -1,7 +1,7 @@
 ---
 name: opub-cli
 description: Use when 用户要用 opub 发布/上传视频或图文、配置多平台发布、发布到抖音/小红书/快手/微博/B站/视频号/百家号，或排查 opub、账号登录校验、浏览器驱动环境问题
-version: "0.9.10"
+version: "0.9.11"
 ---
 
 # opub CLI 使用指南
@@ -16,7 +16,7 @@ version: "0.9.10"
 
 ```bash
 python -c "import platform,sys; assert platform.python_implementation() == 'CPython' and (3,11) <= sys.version_info[:2] <= (3,13); print(platform.system(), platform.machine())"
-python -m pip install --only-binary=:all: "opub==0.9.10"
+python -m pip install --only-binary=:all: "opub==0.9.11"
 opub --repair-env
 ```
 
@@ -33,7 +33,7 @@ PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="https://cdn.playwright.dev" patchright instal
 # Ubuntu/Debian: sudo apt-get install ffmpeg
 ```
 
-首次运行会自动在当前系统用户的 `~/.opub/` 创建数据目录（cookies、许可证和发布记录等），无需手动初始化。同一系统用户下的所有 Agent 固定使用这一目录；不要设置 `SAU_HOME`，也不要复制登录快照到工作区。
+发布和环境 / 许可命令会在当前系统用户的 `~/.opub/` 创建数据目录（cookies、许可证和发布记录等），无需手动初始化。`--history` 不创建目录或文件。同一系统用户下的所有 Agent 固定使用这一目录；不要设置 `SAU_HOME`，也不要复制登录快照到工作区。
 
 发布预检只检查环境，不安装或更新依赖。需要修复时运行 `opub --repair-env`；图文转视频使用 `opub --repair-env --with-video` 安装可选依赖，也可安装 `python -m pip install --only-binary=:all: "opub[video]"`。修复命令使用 opub 当前解释器，不需要许可，也不会发布内容；不能和发布参数或激活命令混用。修复可能包含多个安装步骤，每步最多 600 秒，调用时应允许总计至少 1800 秒。
 
@@ -59,6 +59,7 @@ PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="https://cdn.playwright.dev" patchright instal
 - 发布到抖音、小红书、快手、微博、B站、视频号、百家号
 - 配置发布平台、账号、cookie、登录校验、扫码登录
 - 排查 `opub`、Chromium 或浏览器驱动问题
+- 查看发布历史、任务状态、原记录链接及恢复条件
 
 ## 调用
 
@@ -98,6 +99,26 @@ opub --help                           # 全部参数说明
 
 
 视频号与快手只在本次完整文案和有限上传/提交时间范围内找到唯一作品时返回链接；列表延迟、未完整取证的分页列表、审核中、字段缺失或多候选时保持空链接。`result_url` 表示已归因的作品地址，不代表已经独立验证公开播放；不得为补链接重新投稿。
+
+### 历史只读查询与核对
+
+用户要查看已有任务时，直接查询，不先运行许可、环境修复、登录或恢复：
+
+```bash
+opub --history --output json
+opub --history --limit 5 --output json
+opub --history RUN_ID --output json
+```
+
+列表默认 20 个任务，`--limit` 范围 1–200，只适用于列表。查询只读 `~/.opub/publish-history.sqlite3`，不读取当前素材或账号文件，不创建目录 / 数据库、不迁移、不补写身份、不投稿或核销历史；旧版 v1 无账号表也可读。素材已删除 / 改动时仍显示保存的路径、文案和指纹。数据库缺失时列表为空；任务缺失 / 损坏返回 `RUN-003`，读取失败、锁、热日志或 WAL 返回 `RUN-005`，保留数据库和日志，等待原发布进程结束，不删除或强制恢复。查询不能混入发布、扫码、环境修复、激活或 `--resume` 参数。
+
+JSON `mode` 为 `history_list` / `history_detail`，数据在 `history`，`results: []` 和顶层 `summary` 均为 0，不是新发布结果。有效查询退出 0，即使旧任务失败或被阻断；查询 / 参数错误退出 2。列表按 `order: insertion_desc` 排序，`created_at: null` 表示未记录创建时间，不从 UUID 或文件时间猜测。每个任务的 `states` / `resume` 分别统计原状态和恢复决策。
+
+详情的 `items[].platforms[]` 中，`identity_status: bound` 仅表示原身份已绑定，当前账号未核验；`resume.status` 按以下顺序解释：`reuse_success` 复用成功不再投稿；`blocked_unknown` / RUN-004 等待原进程或到原账号后台核对，不重发；`blocked_identity` / RUN-006 不用当前账号补证或自动创建新任务绕过；`requires_checks` 仅满足记录层条件，实际恢复仍检查素材、计划、许可、环境及当前账号，并由原子领取保护提交。
+
+`evidence.source: local_history` 表明仅为旧记录；`submission: recorded_success` 是记录成功，`attribution: recorded_link` 是经过域名 / 作品路径检查的原成功链接，不代表本次重新归因。`public_access` 始终为 `not_checked`，不能报告公开播放已验证。缺失 / 无效 / 失败条目链接为 null，不从作品 ID 拼接。输出只含已知结果字段，不输出原身份摘要或额外凭据字段。
+
+核对步骤：先等待仍在运行的发布结束；使用原账号进入平台后台，对比原完整标题、描述、标签、素材和计划时间；分别确认提交、作品归因、公开访问 / 播放。列表延迟、多候选或字段不全继续保留未决。后续任务成功不能自动核销旧未知记录，不为补链接重投，不删除或改写历史来绕过保护。
 
 ## 付费许可
 
