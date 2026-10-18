@@ -22,6 +22,8 @@ opub --repair-env
 
 升级：`python -m pip install -U --only-binary=:all: opub`，升级后用 `opub --version` 确认版本。若 pip 报告没有匹配的发行版，不得移除 `--only-binary` 或改装源码包；应报告当前系统、CPU、Python 版本及上述支持范围。
 
+**首次购买另需支付依赖：**安装本技能或 Python 包不会自动安装支付宝能力。需要购买或继续付款时，必须按下文“支付依赖检查”补齐 `alipay-payment-skill`、钱包授权所需的 `alipay-authenticate-wallet` 和 `alipay-bot` CLI；WorkBuddy 等宿主也适用。已有有效许可或已验付只待交付时不要求安装支付依赖。进入自动购买流程前，用 `opub --version` 确认实际运行时不低于 0.9.12，旧版须先升级。
+
 系统依赖：
 
 ```bash
@@ -124,6 +126,24 @@ JSON `mode` 为 `history_list` / `history_detail`，数据在 `history`，`resul
 
 `opub 0.x 创始版`售价 ¥9.90，通过 Agent 内的支付宝付款请求购买，付款核验后自动激活当前设备。一次购买绑定一台设备，无订阅；已安装的 `0.x` 版本可永久离线验签使用。许可不迁移、不解绑、不提供换机重置，新电脑重新购买，未来大版本需要单独购买。opub 自身不设账号。公开 Python 包是诚实用户门禁，属于非强 DRM。
 
+### 支付依赖检查
+
+先检查本机许可；只有需要购买或继续付款时才检查支付依赖。有效许可、只读历史、`--dry-run` 和环境修复不以支付技能或钱包为前提。
+
+| 依赖 | 用途与检查方式 |
+| --- | --- |
+| `alipay-payment-skill` | 支付宝官方支付技能；必须能在当前 Agent 会话中发现并加载，用其 `references/402-payment.md` 处理 opub 的账单 |
+| `alipay-authenticate-wallet` | 支付宝官方钱包技能；一并安装，在用户明确要求钱包开通/授权或支付命令明确要求独立钱包流程时才调用 |
+| `alipay-bot` | 官方买方支付 CLI；在 Agent 实际执行命令的环境中检查 PATH（macOS/Linux 用 `command -v alipay-bot`，Windows 用 `Get-Command alipay-bot`），再运行 `alipay-bot --version` |
+
+缺少技能时，通过宿主支持的技能安装方式，从[支付宝官方仓库](https://github.com/alipay/payment-skills)导入上述两个同名目录，保留完整的 `SKILL.md`、`references/` 和 `.signature/`。WorkBuddy 的用户级安装位置为 `~/.workbuddy/skills/<技能名>/`；不要安装到其他 Agent 的目录。安装后刷新技能或开启新会话，确认宿主能发现并加载，不能仅凭磁盘存在文件就宣称可用。
+
+技能可加载但 CLI 缺失时，读取官方技能的 `references/cli-setup.md`，按其指定 npm 包版本和完整性校验步骤安装；缺少 Node.js/npm 时先补齐该安装前提。`pip install opub` 和 `opub --repair-env` 不会安装这些支付依赖。安装失败或宿主无法加载时，保留原发布输入和购买记录，明确报告缺失依赖及恢复步骤，停止购买后的发布流程，不把“没有支付能力”当作免付费。
+
+支付前加载官方支付技能并遵循其流程；不要自行拼装支付命令，也不要把 `check-wallet` 作为每次付款的前置步骤。钱包授权和本人付款确认由官方流程处理；已有授权不重复申请。
+
+### 购买与恢复
+
 Agent 先保留已确认的发布输入，并运行 `opub --license-status`。尚未激活时运行：
 
 ```bash
@@ -132,12 +152,14 @@ opub --activate --output json
 
 读取 JSON 的 `mode: activation` 和 `activation.status`：
 
-- `payment_required`：向用户说明商品、¥9.90 价格和单设备买断规则，取得本次购买确认后，调用支付宝官方支付技能。原样使用 `payment_needed_file` 中的账单和 `request.url`、`request.method`、`request.body`，不改写账单，也不重新生成订单。支付技能负责钱包授权、本人付款确认和待付款状态查询；缺少该能力时先引导用户启用官方技能。
+- `payment_required`：向用户说明商品、¥9.90 价格和单设备买断规则，取得本次购买确认并完成支付依赖检查后，调用支付宝官方支付技能 `alipay-payment-skill`。原样使用 `payment_needed_file` 中的账单和 `request.url`、`request.method`、`request.body`，不改写账单，也不重新生成订单。支付技能负责钱包授权、本人付款确认和待付款状态查询。付款完成后重试同一激活命令，直到客户端返回 `licensed`；支付工具显示成功不等于本机已激活。
 - `pending_confirmation`：已验付，正在确认交付。重试同一激活命令恢复；不得再次发起付款。
 - `licensed`：许可证已经在本机验签并安装。确认 `opub --license-status` 成功，再自动继续同一个发布任务，不重复询问素材、文案或平台。
 - `unavailable` 或 `LIC-xxx`：保留原购买记录，按错误建议恢复。不得把网络错误当成未付款，也不得删除本地购买状态来重复下单。
 
 用户亲自在支付宝确认付款。不得索取验证码、支付密码或账号密码，不以用户口头“已付款”代替官方验付。不得读取、复制或展示 `activation-purchase.json` 中的领取凭据，也不展示设备哈希、支付凭证和签名许可证原文。
+
+许可检查未成功前，不得执行实际发布、改用底层上传器、修改许可状态，或用 `--dry-run` 冒充已发布。支付依赖缺失不允许改用个人收款码、手工订单号验付、微信或其他未接入的付款渠道。若官方提示“买家和卖家不能相同”，停止同账号重试，说明需由另一位真实买家本人付款；保留原订单，不擅自换绑钱包或新建订单。
 
 激活只在需要联网购买或恢复时联网；安装后的许可验证保持离线。
 

@@ -27,6 +27,8 @@ opub --repair-env
 
 0.x 创始版 ¥9.90，首次激活绑定一台设备；许可覆盖 0.x，已安装的 0.x 版本可永久离线使用。许可不迁移、不解绑、不提供换机重置，未来大版本单独购买。完整费用与激活说明见 [SKILL.md](SKILL.md#付费许可)。
 
+首次购买另需[支付宝官方仓库](https://github.com/alipay/payment-skills)提供的 `alipay-payment-skill`、`alipay-authenticate-wallet` 和 `alipay-bot` CLI；安装 opub 技能或 Python 包不会自动安装它们。WorkBuddy 的技能应导入 `~/.workbuddy/skills/`，并在当前会话中确认能加载；CLI 按官方技能的 `references/cli-setup.md` 安装并验证。缺少支付能力时先补齐依赖，不得跳过激活或改走未接入的支付渠道；已有有效许可无需安装支付依赖。完整步骤见[支付依赖检查](SKILL.md#支付依赖检查)。
+
 ## 发行边界
 
 - 本仓库公开发布 Skill、安装协议和用户文档。
