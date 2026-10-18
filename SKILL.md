@@ -1,7 +1,7 @@
 ---
 name: opub-cli
 description: Use when 用户要用 opub 发布/上传视频或图文、配置多平台发布、发布到抖音/小红书/快手/微博/B站/视频号/百家号，或排查 opub、账号登录校验、浏览器驱动环境问题
-version: "0.9.11"
+version: "0.9.12"
 ---
 
 # opub CLI 使用指南
@@ -16,7 +16,7 @@ version: "0.9.11"
 
 ```bash
 python -c "import platform,sys; assert platform.python_implementation() == 'CPython' and (3,11) <= sys.version_info[:2] <= (3,13); print(platform.system(), platform.machine())"
-python -m pip install --only-binary=:all: "opub==0.9.11"
+python -m pip install --only-binary=:all: "opub==0.9.12"
 opub --repair-env
 ```
 
@@ -122,19 +122,24 @@ JSON `mode` 为 `history_list` / `history_detail`，数据在 `history`，`resul
 
 ## 付费许可
 
-`opub 0.x 创始版`售价 ¥9.90，在爱发电商品页购买：<https://afdian.com/item/69bf71f0a9f511f1bc065254001e7c00>。opub 自身不设账号。购买时无需提前注册爱发电；请使用你自己的手机号或邮箱完成验证，首次购买时爱发电会自动生成账号。付款后复制爱发电发放的激活码；请勿向 Agent 提供验证码或账号密码。激活码首次兑换后绑定一个设备。许可不迁移、不解绑、不提供换机重置，新电脑重新购买。许可覆盖 `0.x`，已安装的 `0.x` 版本可永久离线使用；未来大版本需要单独购买。支付方式由用户在爱发电页面选择。公开的 Python 包是诚实用户门禁，属于非强 DRM，不承诺阻止有能力的用户绕过。
+`opub 0.x 创始版`售价 ¥9.90，通过 Agent 内的支付宝付款请求购买，付款核验后自动激活当前设备。一次购买绑定一台设备，无订阅；已安装的 `0.x` 版本可永久离线验签使用。许可不迁移、不解绑、不提供换机重置，新电脑重新购买，未来大版本需要单独购买。opub 自身不设账号。公开 Python 包是诚实用户门禁，属于非强 DRM。
 
-Agent 执行发布前必须静默运行 `opub --license-status`。保留已经确认的发布输入；若退出码为 13，运行 `opub --activate` 打开购买页。用户取得激活码后运行带 `--code` 的命令，不要再次询问支付方式。不得在用户可见消息、异常或 internal log 中展示完整激活码或设备 hash。激活成功后自动继续同一个发布任务，不重复问参数。
-
-Agent 只负责打开购买页和接收用户付款后提供的激活码，不得代填或索取手机号、邮箱验证码、爱发电账号或密码。
-
-许可状态和激活示例：
+Agent 先保留已确认的发布输入，并运行 `opub --license-status`。尚未激活时运行：
 
 ```bash
-opub --license-status
-opub --activate
-opub --activate --code OPUB0-ABCDE-FGHJK-MNPQR-STVWX-YZ234-56789
+opub --activate --output json
 ```
+
+读取 JSON 的 `mode: activation` 和 `activation.status`：
+
+- `payment_required`：向用户说明商品、¥9.90 价格和单设备买断规则，取得本次购买确认后，调用支付宝官方支付技能。原样使用 `payment_needed_file` 中的账单和 `request.url`、`request.method`、`request.body`，不改写账单，也不重新生成订单。支付技能负责钱包授权、本人付款确认和待付款状态查询；缺少该能力时先引导用户启用官方技能。
+- `pending_confirmation`：已验付，正在确认交付。重试同一激活命令恢复；不得再次发起付款。
+- `licensed`：许可证已经在本机验签并安装。确认 `opub --license-status` 成功，再自动继续同一个发布任务，不重复询问素材、文案或平台。
+- `unavailable` 或 `LIC-xxx`：保留原购买记录，按错误建议恢复。不得把网络错误当成未付款，也不得删除本地购买状态来重复下单。
+
+用户亲自在支付宝确认付款。不得索取验证码、支付密码或账号密码，不以用户口头“已付款”代替官方验付。不得读取、复制或展示 `activation-purchase.json` 中的领取凭据，也不展示设备哈希、支付凭证和签名许可证原文。
+
+激活只在需要联网购买或恢复时联网；安装后的许可验证保持离线。
 
 许可错误统一输出 `[opub] LIC-xxx: <描述>。建议: <动作>`。常见错误及建议：
 
@@ -149,7 +154,7 @@ opub --activate --code OPUB0-ABCDE-FGHJK-MNPQR-STVWX-YZ234-56789
 | `LIC-014` | 激活码已绑定其他设备 | 当前电脑重新购买 |
 | `LIC-015` | 当前客户端版本不适用 | 升级或切换到 opub 0.x 后重试 |
 
-退出码 `13`（`exit 13`）表示需要首次付费激活；显示 `LIC-xxx` 时按表中建议处理。
+退出码 `13`（`exit 13`）表示当前尚未完成激活；待付款和待确认交付通过 `activation.status` 区分。显示 `LIC-xxx` 时按表中建议处理。
 
 ## Agent 用户反馈
 
@@ -158,6 +163,8 @@ opub --activate --code OPUB0-ABCDE-FGHJK-MNPQR-STVWX-YZ234-56789
 1. **发布环境状态**：正在检查、已就绪，或环境异常的简短结论。
 2. **发布开始**：发布已启动，可包含目标平台和素材数量。
 3. **发布结果**：各平台结果（成功或失败）、错误码、结果链接和总体计数。
+
+首次付费激活另行展示商品、价格、单设备规则，并请求本人确认付款；待交付时仅说明恢复状态。
 
 执行 `opub ...` 时，必须将 stdout 和 stderr 重定向到 Agent 内部临时日志，禁止向用户展示或转述原始命令输出。Agent 只可在内部读取日志以判断退出码并提取最终结果，不得把内部日志转化为过程消息。
 
