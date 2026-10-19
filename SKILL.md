@@ -1,7 +1,7 @@
 ---
 name: opub-cli
 description: Use when 用户要用 opub 发布/上传视频或图文、配置多平台发布、发布到抖音/小红书/快手/微博/B站/视频号/百家号，或排查 opub、账号登录校验、浏览器驱动环境问题
-version: "0.9.12"
+version: "0.9.13"
 ---
 
 # opub CLI 使用指南
@@ -16,13 +16,13 @@ version: "0.9.12"
 
 ```bash
 python -c "import platform,sys; assert platform.python_implementation() == 'CPython' and (3,11) <= sys.version_info[:2] <= (3,13); print(platform.system(), platform.machine())"
-python -m pip install --only-binary=:all: "opub==0.9.12"
+python -m pip install --only-binary=:all: "opub==0.9.13"
 opub --repair-env
 ```
 
 升级：`python -m pip install -U --only-binary=:all: opub`，升级后用 `opub --version` 确认版本。若 pip 报告没有匹配的发行版，不得移除 `--only-binary` 或改装源码包；应报告当前系统、CPU、Python 版本及上述支持范围。
 
-**首次购买另需支付依赖：**安装本技能或 Python 包不会自动安装支付宝能力。需要购买或继续付款时，必须按下文“支付依赖检查”补齐 `alipay-payment-skill`、钱包授权所需的 `alipay-authenticate-wallet` 和 `alipay-bot` CLI；WorkBuddy 等宿主也适用。已有有效许可或已验付只待交付时不要求安装支付依赖。进入自动购买流程前，用 `opub --version` 确认实际运行时不低于 0.9.12，旧版须先升级。
+**首次购买另需支付依赖：**安装本技能或 Python 包不会自动安装支付宝能力。需要购买或继续付款时，必须按下文“支付依赖检查”补齐 `alipay-payment-skill`、钱包授权所需的 `alipay-authenticate-wallet` 和 `alipay-bot` CLI；WorkBuddy 等宿主也适用。已有有效许可或已验付只待交付时不要求安装支付依赖。进入自动购买流程前，用 `opub --version` 确认实际运行时不低于 0.9.13，旧版须先升级。
 
 系统依赖：
 
