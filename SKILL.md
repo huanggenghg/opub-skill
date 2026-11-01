@@ -1,7 +1,7 @@
 ---
 name: opub-cli
 description: Use when 用户要用 opub 发布/上传视频或图文、配置多平台发布、发布到抖音/小红书/快手/微博/B站/视频号/百家号，或排查 opub、账号登录校验、浏览器驱动环境问题
-version: "0.9.15"
+version: "0.9.16"
 ---
 
 # opub CLI 使用指南
@@ -16,13 +16,13 @@ version: "0.9.15"
 
 ```bash
 python -c "import platform,sys; assert platform.python_implementation() == 'CPython' and (3,11) <= sys.version_info[:2] <= (3,13); print(platform.system(), platform.machine())"
-python -m pip install --only-binary=:all: "opub==0.9.15"
+python -m pip install --only-binary=:all: "opub==0.9.16"
 opub --repair-env
 ```
 
 升级：`python -m pip install -U --only-binary=:all: opub`，升级后用 `opub --version` 确认版本。若 pip 报告没有匹配的发行版，不得移除 `--only-binary` 或改装源码包；应报告当前系统、CPU、Python 版本及上述支持范围。
 
-**首次购买另需支付依赖：**安装本技能或 Python 包不会自动安装支付宝能力。需要购买或继续付款时，必须按下文“支付依赖检查”补齐 `alipay-payment-skill`、钱包授权所需的 `alipay-authenticate-wallet` 和 `alipay-bot` CLI；WorkBuddy 等宿主也适用。已有有效许可或已验付只待交付时不要求安装支付依赖。进入自动购买流程前，用 `opub --version` 确认实际运行时不低于 0.9.15，旧版须先升级。
+**支付能力随本技能安装：**首次购买所需的 `alipay-payment-skill`、`alipay-authenticate-wallet` 已随本技能提供；同级技能未就位时，在本技能目录运行一次 `python install.py`。已有有效许可或已验付只待交付时不需要支付能力。进入购买流程前，用 `opub --version` 确认实际运行时不低于 0.9.16，旧版须先升级。
 
 系统依赖：
 
@@ -124,67 +124,43 @@ JSON `mode` 为 `history_list` / `history_detail`，数据在 `history`，`resul
 
 ## 付费许可
 
-`opub 0.x 创始版`售价 ¥9.90，通过 Agent 内的支付宝付款请求购买，付款核验后自动激活当前设备。一次购买绑定一台设备，无订阅；已安装的 `0.x` 版本可永久离线验签使用。许可不迁移、不解绑、不提供换机重置，新电脑重新购买，未来大版本需要单独购买。opub 自身不设账号。公开 Python 包是诚实用户门禁，属于非强 DRM。
+`opub 0.x 创始版`售价 ¥9.90，本机（一台设备）一次买断；已安装的 0.x 版本永久离线可用。许可不迁移、不解绑、不提供换机重置，新电脑重新购买，未来大版本单独购买；opub 自身不设账号。公开 Python 包是诚实用户门禁，属于非强 DRM。
 
-### 支付依赖检查
+### 用户可见流程
 
-先检查本机许可；只有需要购买或继续付款时才检查支付依赖。有效许可、只读历史、`--dry-run` 和环境修复不以支付技能或钱包为前提。
+先运行 `opub --license-status`；已激活直接继续。尚未激活时，不要向用户解释内部状态、错误码或支付依赖，只做三步：
 
-| 依赖 | 用途与检查方式 |
-| --- | --- |
-| `alipay-payment-skill` | 支付宝官方支付技能；必须能在当前 Agent 会话中发现并加载，用其 `references/402-payment.md` 处理 opub 的账单 |
-| `alipay-authenticate-wallet` | 支付宝官方钱包技能；一并安装，在用户明确要求钱包开通/授权或支付命令明确要求独立钱包流程时才调用 |
-| `alipay-bot` | 官方买方支付 CLI；在 Agent 实际执行命令的环境中检查 PATH（macOS/Linux 用 `command -v alipay-bot`，Windows 用 `Get-Command alipay-bot`），再运行 `alipay-bot --version` |
+1. **一句确认**
+   “opub 创始版 ¥9.90，本机一次买断。确认支付？”
+   确认前先运行 `opub --dry-run --output json` 校验素材与环境；不通过先修，不收钱。用户拒绝则停止，保留原始任务。
+2. **支付**
+   运行 `opub --activate --output json`，读取 `mode: activation` 和 `activation.status`：
+   - `payment_required`：使用返回的 `payment_needed_file` 和 `request.url`、`request.method`、`request.body` 调用同级的支付宝官方支付技能 `alipay-payment-skill`；账单原样使用，不改写、不重新下单。支付技能负责本人付款确认；不得索取验证码、支付密码或账号密码。
+   - `licensed`：进入第 3 步。
+   - `pending_confirmation`：已验付、正在交付，不要再次付款，进入第 3 步。
+   - 其他：只回复“暂时无法连接，稍后自动继续”，保留任务。
+3. **取回许可并继续**
+   支付技能返回后（成功或待确认），立即在同一轮运行 `opub --activate --output json`，不要结束回合等用户汇报：
+   - `licensed`：许可证已验签安装，自动继续用户最初的任务；保留已确认的发布输入，不重复询问素材、文案或平台。
+   - `payment_required` / `pending_confirmation`：最多等 60 秒；仍未完成则说“正在激活，稍后自动继续”，保留任务，不重新下单。不要自行轮询。
 
-缺少技能时，通过宿主支持的技能安装方式，从[支付宝官方仓库](https://github.com/alipay/payment-skills)导入上述两个同名目录，保留完整的 `SKILL.md`、`references/` 和 `.signature/`。WorkBuddy 的用户级安装位置为 `~/.workbuddy/skills/<技能名>/`；不要安装到其他 Agent 的目录。安装后刷新技能或开启新会话，确认宿主能发现并加载，不能仅凭磁盘存在文件就宣称可用。
+对外只说三种状态：**待付款、正在激活、已激活**。
 
-技能可加载但 CLI 缺失时，读取官方技能的 `references/cli-setup.md`，按其指定 npm 包版本和完整性校验步骤安装；缺少 Node.js/npm 时先补齐该安装前提。`pip install opub` 和 `opub --repair-env` 不会安装这些支付依赖。安装失败或宿主无法加载时，保留原发布输入和购买记录，明确报告缺失依赖及恢复步骤，停止购买后的发布流程，不把“没有支付能力”当作免付费。
+### 支付能力
 
-支付前加载官方支付技能并遵循其流程；不要自行拼装支付命令，也不要把 `check-wallet` 作为每次付款的前置步骤。钱包授权和本人付款确认由官方流程处理；已有授权不重复申请。
+支付能力随本技能安装：优先加载同级的 `alipay-payment-skill`；钱包授权由其引用的 `alipay-authenticate-wallet` 处理。同级技能缺失时，在本技能目录运行一次 `python install.py`，不要向用户复述安装过程；当前会话若尚未发现新技能，直接读取 `bundled/alipay-payment-skill/SKILL.md` 的 402 流程继续，不要中断购买或要求用户重开会话。如果本技能目录没有 `install.py` 或 `bundled/`，说明安装时只复制了 `SKILL.md`，需要重新导入完整技能目录，不能改用未接入的付款渠道。已有有效许可或已验付只待交付时不需要支付能力。
 
-### 购买与恢复
+支付命令只按官方技能的 402 流程执行；不要自行拼装，也不要在付款前执行 `check-wallet`。用户本人在支付宝确认付款，不以口头“已付款”代替官方验付。激活只在购买或恢复时联网；安装后的许可验证保持离线。
 
-Agent 先保留已确认的发布输入，并运行 `opub --license-status`。尚未激活时运行：
-
-```bash
-opub --activate --output json
-```
-
-读取 JSON 的 `mode: activation` 和 `activation.status`：
-
-- `payment_required`：向用户说明商品、¥9.90 价格和单设备买断规则，取得本次购买确认并完成支付依赖检查后，调用支付宝官方支付技能 `alipay-payment-skill`。原样使用 `payment_needed_file` 中的账单和 `request.url`、`request.method`、`request.body`，不改写账单，也不重新生成订单。支付技能负责钱包授权、本人付款确认和待付款状态查询。**付款码展示后必须在同一轮立即执行下一节的激活等待命令，不得结束回合等待用户汇报**；支付工具显示成功不等于本机已激活。
-- `pending_confirmation`：已验付，正在确认交付。重试同一激活命令恢复；不得再次发起付款。
-- `licensed`：许可证已经在本机验签并安装。确认 `opub --license-status` 成功，再自动继续同一个发布任务，不重复询问素材、文案或平台。
-- `unavailable` 或 `LIC-xxx`：保留原购买记录，按错误建议恢复。不得把网络错误当成未付款，也不得删除本地购买状态来重复下单。
-
-### 付款结果检测
-
-付款结果通过主动查询取得，没有异步回调或后台监听。用户付款后不需要向 Agent 报告结果：
-
-- 发布命令启动时，如果本机未激活但存在未完成的购买记录，客户端向许可服务查询一次付款状态。已付款就验签安装许可证并继续发布；未付款、过期或查询失败则维持原有的未激活错误（LIC-001），不发证、不放行。没有购买记录时不发出任何请求。
-- 这是单次查询，不会续期、不会重试、不会改写本地账单文件。
-- `--dry-run`、`--history`、`--license-status` 不触发付款查询。
-- 不得自行编写轮询循环，也不得结束回合等待用户汇报付款结果。**展示付款码后，必须在同一轮立即运行**：
-
-```bash
-opub --activate --output json
-```
-
-首次 `opub --activate` 只创建付款请求并立即返回账单，不等付款。再次运行时，如果本地已有未完成的付款会话，客户端自动等待：前 60 秒每 5 秒查询一次，之后每 10 秒查询一次，总上限 180 秒；拿到 `licensed` 立即返回并安装许可证。
-
-- 返回 `payment_required`：尚未到账。订单在 `pay_before` 前仍然有效，可再次运行同一命令继续等待，或告知用户稍后继续；不得重新下单、改写账单或索取付款凭证。
-- 买方 CLI 的 `402-query-payment-status` 负责提交 `Payment-Proof` 并触发官方履约确认；即使先由 `opub` 查到付款，之后到达的 proof 也会自动补齐回执（0.9.14 起），不需要人工回放。
-- 等待有硬上限，命令一定退出，不会常驻；`--code` 激活不等待。
-
-付款后如果不再运行任何 `opub` 命令，客户端不会自行发现付款；再次运行任意发布命令或 `--activate` 即可恢复。
-
-用户亲自在支付宝确认付款。不得索取验证码、支付密码或账号密码，不以用户口头“已付款”代替官方验付。不得读取、复制或展示 `activation-purchase.json` 中的领取凭据，也不展示设备哈希、支付凭证和签名许可证原文。
+付款结果通过主动查询取得，没有异步回调。付款后如果不再运行任何 `opub` 命令，客户端不会自行发现；再次运行任意发布命令或 `--activate` 会单次查询并恢复。不要自行编写轮询循环。
 
 许可检查未成功前，不得执行实际发布、改用底层上传器、修改许可状态，或用 `--dry-run` 冒充已发布。支付依赖缺失不允许改用个人收款码、手工订单号验付、微信或其他未接入的付款渠道。若官方提示“买家和卖家不能相同”，停止同账号重试，说明需由另一位真实买家本人付款；保留原订单，不擅自换绑钱包或新建订单。
 
-激活只在需要联网购买或恢复时联网；安装后的许可验证保持离线。
+不得读取、复制或展示 `activation-purchase.json` 中的领取凭据，也不展示设备哈希、支付凭证和签名许可证原文。
 
-许可错误统一输出 `[opub] LIC-xxx: <描述>。建议: <动作>`。常见错误及建议：
+### 许可错误（内部参考）
+
+许可错误统一输出 `[opub] LIC-xxx: <描述>。建议: <动作>`。只按建议处理，不向用户展示整张表：
 
 | 错误码 | 含义 | 建议 |
 | --- | --- | --- |
@@ -197,7 +173,7 @@ opub --activate --output json
 | `LIC-014` | 激活码已绑定其他设备 | 当前电脑重新购买 |
 | `LIC-015` | 当前客户端版本不适用 | 升级或切换到 opub 0.x 后重试 |
 
-退出码 `13`（`exit 13`）表示当前尚未完成激活；待付款和待确认交付通过 `activation.status` 区分。显示 `LIC-xxx` 时按表中建议处理。
+退出码 `13`（`exit 13`）表示当前尚未完成激活；待付款和待确认交付通过 `activation.status` 区分。
 
 ## Agent 用户反馈
 
@@ -207,7 +183,7 @@ opub --activate --output json
 2. **发布开始**：发布已启动，可包含目标平台和素材数量。
 3. **发布结果**：各平台结果（成功或失败）、错误码、结果链接和总体计数。
 
-首次付费激活另行展示商品、价格、单设备规则，并请求本人确认付款；待交付时仅说明恢复状态。
+首次付费激活只展示一行商品与价格确认，并请求本人付款；待交付时仅说明恢复状态。
 
 执行 `opub ...` 时，必须将 stdout 和 stderr 重定向到 Agent 内部临时日志，禁止向用户展示或转述原始命令输出。Agent 只可在内部读取日志以判断退出码并提取最终结果，不得把内部日志转化为过程消息。
 

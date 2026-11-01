@@ -6,10 +6,10 @@ opub 是面向 AI Agent 的多平台内容发布技能。用户用自然语言�
 
 ## 安装运行时
 
-opub 0.9.15 只提供经过编译的 Python wheel，不提供源码包：
+opub 0.9.16 只提供经过编译的 Python wheel，不提供源码包：
 
 ```bash
-python -m pip install --only-binary=:all: "opub==0.9.15"
+python -m pip install --only-binary=:all: "opub==0.9.16"
 opub --repair-env
 ```
 
@@ -27,12 +27,12 @@ opub --repair-env
 
 0.x 创始版 ¥9.90，首次激活绑定一台设备；许可覆盖 0.x，已安装的 0.x 版本可永久离线使用。许可不迁移、不解绑、不提供换机重置，未来大版本单独购买。完整费用与激活说明见 [SKILL.md](SKILL.md#付费许可)。
 
-首次购买另需[支付宝官方仓库](https://github.com/alipay/payment-skills)提供的 `alipay-payment-skill`、`alipay-authenticate-wallet` 和 `alipay-bot` CLI；安装 opub 技能或 Python 包不会自动安装它们。WorkBuddy 的技能应导入 `~/.workbuddy/skills/`，并在当前会话中确认能加载；CLI 按官方技能的 `references/cli-setup.md` 安装并验证。缺少支付能力时先补齐依赖，不得跳过激活或改走未接入的支付渠道；已有有效许可无需安装支付依赖。完整步骤见[支付依赖检查](SKILL.md#支付依赖检查)。
+首次购买所需的支付宝官方技能 `alipay-payment-skill`、`alipay-authenticate-wallet` 已随本技能提供（见 `bundled/`）。本技能须按完整目录安装，不要只复制 `SKILL.md`；否则不包含 `bundled/` 和 `install.py`。安装本技能后，Agent 在首次购买时会运行一次 `python install.py`，把两个同级技能放到宿主技能目录；用户不需要单独导入。需要预装 `alipay-bot` CLI 时运行 `python install.py --install-cli`，脚本按官方锁定的 npm 版本和 integrity 校验安装；失败时由支付技能按官方 `references/cli-setup.md` 处理。已有有效许可无需支付能力。
 
 ## 发行边界
 
 - 本仓库公开发布 Skill、安装协议和用户文档。
-- opub 0.9.15 运行时通过 PyPI 分发编译 wheel，核心运行源码不在本仓库中。
+- opub 0.9.16 运行时通过 PyPI 分发编译 wheel，核心运行源码不在本仓库中。
 - `huanggenghg/opub` 保留 0.8.21 及更早版本的历史开源代码和 MIT 权利。
 - 编译会提高直接读取和修改运行时代码的成本，但不承诺阻止专业逆向。
 
@@ -40,4 +40,4 @@ opub --repair-env
 
 ## 许可证
 
-本仓库的 Skill 和文档采用 [MIT License](LICENSE)。该许可证不适用于 PyPI 中的 opub 0.9.15 私有运行时。
+本仓库的 Skill 和文档采用 [MIT License](LICENSE)。该许可证不适用于 PyPI 中的 opub 0.9.16 私有运行时。`bundled/` 下的支付宝官方技能按 Apache License 2.0 分发，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
